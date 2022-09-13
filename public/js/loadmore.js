@@ -14,14 +14,14 @@
 
         onClick(event) {
             var _this = event.data.self;
-            var $anchor = $(event.target);
-            var $showMore = $anchor.parent();
+            let anchor = event.target;
+            let showMore = anchor.parentElement;
 
             event.stopPropagation();
             event.preventDefault();
 
             var progressTimer = _this.icinga.timer.register(function () {
-                var label = $anchor.html();
+                var label = anchor.innerText;
 
                 var dots = label.substr(-3);
                 if (dots.slice(0, 1) !== '.') {
@@ -37,14 +37,14 @@
                     }
                 }
 
-                $anchor.html(label + dots);
+                anchor.innerText = label + dots;
             }, null, 250);
 
-            var url = $anchor.attr('href');
+            var url = anchor.getAttribute('href');
             var req = _this.icinga.loader.loadUrl(
                 // Add showCompact, we don't want controls in paged results
                 _this.icinga.utils.addUrlFlag(url, 'showCompact'),
-                $showMore.parent(),
+                $(showMore.parentElement),
                 undefined,
                 undefined,
                 'append',
@@ -53,7 +53,7 @@
             );
             req.addToHistory = false;
             req.done(function () {
-                $showMore.remove();
+                showMore.remove();
 
                 // Set data-icinga-url to make it available for Icinga.History.getCurrentState()
                 req.$target.closest('.container').data('icingaUrl', url);
