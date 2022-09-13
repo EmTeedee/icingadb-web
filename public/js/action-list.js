@@ -4,6 +4,13 @@
 
     "use strict";
 
+    try {
+        var notjQuery = require('icinga/icinga-php-library/notjQuery');
+    } catch (e) {
+        console.warn('Library not available:', e);
+        return;
+    }
+
     /**
      * Parse the filter query contained in the given URL query string
      *
@@ -44,8 +51,6 @@
             event.stopImmediatePropagation();
             event.stopPropagation();
 
-            var container = $list.closest('.container');
-
             if ($list.is('[data-icinga-multiselect-url]')) {
                 if (event.ctrlKey || event.metaKey) {
                     $item.toggleClass('active');
@@ -73,28 +78,15 @@
                     $list.find('[data-action-item].active').removeClass('active');
                     $item.addClass('active');
                 }
-
-                // For items that do not have a bottom status bar like Downtimes, Comments...
-                if (! container.children('.footer').length) {
-                    container.append('<div class="footer" data-action-list-automatically-added></div>');
-                }
             } else {
                 $list.find('[data-action-item].active').removeClass('active');
                 $item.addClass('active');
             }
 
             $activeItems = $list.find('[data-action-item].active');
-            var footer = container.children('.footer');
+            _this.addSelectionCountToFooter();
 
             if ($activeItems.length === 0) {
-                if (footer.length) {
-                    if (typeof footer.data('action-list-automatically-added') !== 'undefined') {
-                        footer.remove();
-                    } else {
-                        footer.children('.selection-count').remove();
-                    }
-                }
-
                 if (_this.icinga.loader.getLinkTargetFor($target).attr('id') === 'col2') {
                     _this.icinga.ui.layout1col();
                 }
@@ -111,23 +103,53 @@
                     url = $list.attr('data-icinga-multiselect-url') + '?' + filters.toArray().join('|');
                 }
 
-                if ($list.is('[data-icinga-multiselect-url]')) {
-                    if (! footer.children('.selection-count').length) {
-                        footer.prepend('<div class="selection-count"></div>');
-                    }
-
-                    var label = $list.data('icinga-multiselect-count-label').replace('%d', $activeItems.length);
-                    var selectedItems = footer.find('.selection-count > .selected-items');
-                    if (selectedItems.length) {
-                        selectedItems.text(label);
-                    } else {
-                        footer.children('.selection-count').append('<span class="selected-items">' + label + '</span>');
-                    }
-                }
-
                 _this.icinga.loader.loadUrl(
                     url, _this.icinga.loader.getLinkTargetFor($target)
                 );
+            }
+        }
+
+        addSelectionCountToFooter() {
+            let list = document.querySelector('.action-list');
+            let hasMultiSelectUrl = list.hasAttribute('data-icinga-multiselect-url');
+
+            if (! hasMultiSelectUrl) {
+                return;
+            }
+
+            let activeItemCount = list.querySelectorAll('[data-action-item].active').length;
+            let container = list.closest('.container');
+            let footer = container.querySelector('.footer');
+
+            // For items that do not have a bottom status bar like Downtimes, Comments...
+            if (footer === null) {
+                footer = notjQuery.render('<div class="footer" data-action-list-automatically-added></div>')
+                container.appendChild(footer);
+            }
+
+            let selectionCount = footer.querySelector('.selection-count');
+
+            if (selectionCount === null) {
+                selectionCount = notjQuery.render('<div class="selection-count"></div>');
+                footer.prepend(selectionCount);
+            }
+
+            let label = list.getAttribute('data-icinga-multiselect-count-label').replace('%d', activeItemCount);
+            let selectedItems = footer.querySelector('.selection-count > .selected-items');
+            if (selectedItems !== null) {
+                selectedItems.innerHTML = label;
+            } else {
+                selectedItems = notjQuery.render('<span class="selected-items">' + label + '</span>');
+                selectionCount.appendChild(selectedItems);
+            }
+
+
+            if (activeItemCount === 0 && footer) {
+                if (footer.hasAttribute('data-action-list-automatically-added')) {
+                    footer.remove();
+                } else {
+                    selectionCount.remove();
+                }
             }
         }
 
@@ -157,6 +179,7 @@
                     );
 
                     this.lastActivatedItem = 'all'; // to know on next keydown that all items was activated with ctrl+A
+                    _this.addSelectionCountToFooter();
                 }
 
                 return;
@@ -261,6 +284,8 @@
                 url = toActiveItem.querySelector('[href]').getAttribute('href');
             }
 
+            _this.addSelectionCountToFooter();
+
             _this.icinga.loader.loadUrl(
                 url, _this.icinga.loader.getLinkTargetFor($(toActiveItem))
             );
@@ -299,15 +324,7 @@
                     ).removeClass('active');
                 }
 
-                var footer = $list.closest('.container').children('.footer');
-
-                if (footer.length) {
-                    if (typeof footer.data('action-list-automatically-added') !== 'undefined') {
-                        footer.remove();
-                    } else {
-                        footer.children('.selection-count').remove();
-                    }
-                }
+                _this.addSelectionCountToFooter();
             }
         }
 
@@ -319,9 +336,8 @@
             }
 
             var $list = $target.find('.action-list');
-
+            var _this = event.data.self;
             if ($list.length && $list.is('[data-icinga-multiselect-url], [data-icinga-detail-url]')) {
-                var _this = event.data.self;
                 var detailUrl = _this.icinga.utils.parseUrl(_this.icinga.history.getCol2State().replace(/^#!/, ''));
 
                 if ($list.attr('data-icinga-multiselect-url') === detailUrl.path) {
@@ -337,20 +353,7 @@
                 }
             }
 
-            if ($list.length && $list.is('[data-icinga-multiselect-url]')) {
-                var $activeItems = $list.find('[data-action-item].active');
-
-                if ($activeItems.length) {
-                    if (! $target.children('.footer').length) {
-                        $target.append('<div class="footer" data-action-list-automatically-added></div>');
-                    }
-
-                    var label = $list.data('icinga-multiselect-count-label').replace('%d', $activeItems.length);
-                    $target.children('.footer').prepend(
-                        '<div class="selection-count"><span class="selected-items">' + label + '</span></div>'
-                    );
-                }
-            }
+            _this.addSelectionCountToFooter();
         }
     }
 
