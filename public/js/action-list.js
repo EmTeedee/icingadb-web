@@ -276,6 +276,8 @@
             toActiveItem.classList.add('active');
             this.lastActivatedItem = toActiveItem;
 
+            toActiveItem.scrollIntoView({block: 'center'});
+
             activeItems = list.querySelectorAll('[data-action-item].active');
 
             if (activeItems.length > 1) {
