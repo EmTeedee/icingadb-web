@@ -259,19 +259,29 @@
             });
 
             if (containerUrls.length) {
-                let req = $.ajax({
-                    context     : this,
-                    type        : 'post',
-                    url         : this.icinga.config.baseUrl + '/icingadb/migrate/monitoring-url',
-                    headers     : { 'Accept': 'application/json' },
-                    contentType : 'application/json',
-                    data        : JSON.stringify(containerUrls)
-                });
+                fetch(
+                    this.icinga.config.baseUrl + '/icingadb/migrate/monitoring-url',
+                    {
+                        method      : 'POST',
+                        headers     :
+                            {
+                                'Accept': 'application/json',
+                                'Content-Type' : 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                        body        : JSON.stringify(containerUrls),
+                    }
+                )
+                    .then(response => {
+                        if (! response.ok) {
+                            throw new Error('Network response was not OK');
+                        }
 
-                req.urls = urls;
-                req.urlIndexToContainerId = containerIds;
-                req.done(this.processUrlMigrationResults);
-                req.always(() => this.changeUrlMigrationReadyState(true));
+                        return response.json();
+                    })
+                    .then(data => this.processUrlMigrationResults(data, urls, containerIds))
+                    .catch(error => console.error('Request failed:', error))
+                    .finally(() => this.changeBackendSupportReadyState(true));
             } else {
                 // All urls have already been migrated once, show popup immediately
                 this.addSuggestions(urls);
@@ -279,7 +289,7 @@
             }
         }
 
-        processUrlMigrationResults(data, textStatus, req) {
+        processUrlMigrationResults(data, urls, urlIndexToContainerId) {
             let _this = this;
             let result, containerId;
 
@@ -295,11 +305,11 @@
             }
 
             result.forEach((migratedUrl, i) => {
-                containerId = req.urlIndexToContainerId[i];
-                this.knownMigrations[req.urls[containerId]] = migratedUrl;
+                containerId = urlIndexToContainerId[i];
+                this.knownMigrations[urls[containerId]] = migratedUrl;
             });
 
-            this.addSuggestions(req.urls);
+            this.addSuggestions(urls);
         }
 
         prepareBackendCheckboxForm(modules) {
@@ -315,19 +325,29 @@
             });
 
             if (moduleNames.length) {
-                let req = $.ajax({
-                    context     : this,
-                    type        : 'post',
-                    url         : this.icinga.config.baseUrl + '/icingadb/migrate/backend-support',
-                    headers     : { 'Accept': 'application/json' },
-                    contentType : 'application/json',
-                    data        : JSON.stringify(moduleNames)
-                });
+                fetch(
+                    this.icinga.config.baseUrl + '/icingadb/migrate/backend-support',
+                    {
+                        method      : 'POST',
+                        headers     :
+                            {
+                                'Accept': 'application/json',
+                                'Content-Type' : 'application/json' ,
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                        body        : JSON.stringify(moduleNames),
+                    }
+                )
+                    .then(response => {
+                        if (! response.ok) {
+                            throw new Error('Network response was not OK');
+                        }
 
-                req.modules = modules;
-                req.moduleIndexToContainerId = containerIds;
-                req.done(this.processBackendSupportResults);
-                req.always(() => this.changeBackendSupportReadyState(true));
+                        return response.json();
+                    })
+                    .then(data => this.processBackendSupportResults(data, modules, containerIds))
+                    .catch(error => console.error('Request failed:', error))
+                    .finally(() => this.changeBackendSupportReadyState(true));
             } else {
                 // All modules have already been checked once, show popup immediately
                 this.setupBackendCheckboxForm(modules);
@@ -335,15 +355,15 @@
             }
         }
 
-        processBackendSupportResults(data, textStatus, req) {
+        processBackendSupportResults(data, modules, moduleIndexToContainerId) {
             let result = data.data;
 
             result.forEach((state, i) => {
-                let containerId = req.moduleIndexToContainerId[i];
-                this.knownBackendSupport[req.modules[containerId]] = state;
+                let containerId = moduleIndexToContainerId[i];
+                this.knownBackendSupport[modules[containerId]] = state;
             });
 
-            this.setupBackendCheckboxForm(req.modules);
+            this.setupBackendCheckboxForm(modules);
         }
 
         setupBackendCheckboxForm(modules) {
@@ -359,17 +379,29 @@
             if (Object.keys(supportedModules).length) {
                 this.backendSupportRelated = { ...this.backendSupportRelated, ...supportedModules };
 
-                let req = $.ajax({
-                    context : this,
-                    type    : 'get',
-                    url     : this.icinga.config.baseUrl + '/icingadb/migrate/checkbox-state?showCompact'
-                });
+                fetch(
+                    this.icinga.config.baseUrl + '/icingadb/migrate/checkbox-state?showCompact',
+                    {
+                        headers :
+                            {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                    }
+                )
+                    .then(response => {
+                        if (! response.ok) {
+                            throw new Error('Network response was not OK');
+                        }
 
-                req.done(this.setCheckboxState);
+                        return response.text();
+                    })
+                    .then(html => this.setCheckboxState(html))
+                    .catch(error => console.error('Request failed:', error))
             }
         }
 
-        setCheckboxState(html, textStatus, req) {
+        setCheckboxState(html) {
+            console.log(html);
             let form = this.Popup().querySelector('.suggestion-area > #setAsBackendForm');
             if (! form) {
                 form = notjQuery.render(html);
