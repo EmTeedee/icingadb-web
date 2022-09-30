@@ -71,6 +71,12 @@ abstract class SlaReport extends ReportHook
 
         if (isset($config['breakdown']) && $config['breakdown'] !== 'none') {
             switch ($config['breakdown']) {
+                case 'hour':
+                    $interval = new DateInterval('PT1H');
+                    $format = 'H';
+                    $boundary = '+1 hour';
+
+                    break;
                 case 'day':
                     $interval = new DateInterval('P1D');
                     $format = 'Y-m-d';
@@ -168,6 +174,7 @@ abstract class SlaReport extends ReportHook
             'label'   => t('Breakdown'),
             'options' => [
                 'none'  => t('None', 'SLA Report Breakdown'),
+                'hour'  => t('Hour'),
                 'day'   => t('Day'),
                 'week'  => t('Week'),
                 'month' => t('Month')
@@ -221,10 +228,6 @@ abstract class SlaReport extends ReportHook
         foreach ($data->getRows() as $row) {
             $cells = [];
 
-            foreach ($row->getDimensions() as $dimension) {
-                $cells[] = Html::tag('td', null, $dimension);
-            }
-
             // We only have one metric
             $sla = $row->getValues()[0];
 
@@ -234,7 +237,21 @@ abstract class SlaReport extends ReportHook
                 $slaClass = 'ok';
             }
 
-            $cells[] = Html::tag('td', ['class' => "sla-column $slaClass"], round($sla, $precision));
+            if ($config['breakdown'] === 'hour' && $slaClass === 'nok') {
+                foreach ($row->getDimensions() as $dimension) {
+                    $cells[] = Html::tag('td', null, $dimension);
+                }
+            } elseif ($config['breakdown'] != 'hour') {
+                foreach ($row->getDimensions() as $dimension) {
+                    $cells[] = Html::tag('td', null, $dimension);
+                }
+            }
+
+            if ($config['breakdown'] === 'hour' && $slaClass === 'nok') {
+                $cells[] = Html::tag('td', ['class' => "sla-column $slaClass"], round($sla, $precision));
+            } elseif ($config['breakdown'] != 'hour') {
+                $cells[] = Html::tag('td', ['class' => "sla-column $slaClass"], round($sla, $precision));
+            }
 
             $tableRows[] = Html::tag('tr', null, $cells);
         }
