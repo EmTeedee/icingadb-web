@@ -385,7 +385,8 @@ class ObjectSuggestions extends Suggestions
         foreach ($resolver->getRelations($subject) as $name => $relation) {
             /** @var Relation $relation */
             $isHasOne = $relation instanceof HasOne;
-            if (empty($path) || $name === 'state' || $name === 'last_comment') {
+            // TODO: Is there a more generic solution maybe?
+            if (empty($path) || (($name === 'state' || $name === 'last_comment' || $name === 'notificationcommand') && $path[0] !== 'environment')) {
                 $relationPath = [$name];
                 if ($isHasOne && empty($path)) {
                     array_unshift($relationPath, $subject->getTableName());
