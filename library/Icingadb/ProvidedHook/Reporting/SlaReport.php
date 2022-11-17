@@ -188,6 +188,12 @@ abstract class SlaReport extends ReportHook
             'min'         => '1',
             'max'         => '12'
         ]);
+
+        $form->addElement('checkbox', 'csv-json-export', [
+            'label'          => 'Export total for CSV and JSON',
+            'checkedValue'   => '1',
+            'uncheckedValue' => '0'
+        ]);
     }
 
     public function getData(Timerange $timerange, array $config = null)
